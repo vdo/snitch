@@ -60,20 +60,6 @@ nfpms:
       - rpm
       - apk
 
-brews:
-  - repository:
-      owner: karol-broda
-      name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    skip_upload: auto
-    homepage: https://github.com/karol-broda/snitch
-    description: a friendlier ss/netstat for humans
-    license: MIT
-    install: |
-      bin.install "snitch"
-    test: |
-      system "#{bin}/snitch", "--version"
-
 release:
   github:
     owner: karol-broda
