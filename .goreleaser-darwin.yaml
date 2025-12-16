@@ -1,0 +1,36 @@
+version: 2
+
+project_name: snitch
+
+builds:
+  - id: darwin
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X snitch/cmd.Version={{.Version}}
+      - -X snitch/cmd.Commit={{.ShortCommit}}
+      - -X snitch/cmd.Date={{.Date}}
+
+archives:
+  - formats:
+      - tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- .Arch }}
+
+release:
+  github:
+    owner: karol-broda
+    name: snitch
+  draft: false
+  prerelease: auto
+  mode: append
+
