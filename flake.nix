@@ -68,8 +68,9 @@
             env.CGO_ENABLED = 0;
             ldflags = [
               "-s" "-w"
-              "-X snitch/cmd.version=${self.shortRev or "dev"}"
-              "-X snitch/cmd.commit=${self.shortRev or "unknown"}"
+              "-X snitch/cmd.Version=${self.shortRev or "dev"}"
+              "-X snitch/cmd.Commit=${self.shortRev or "none"}"
+              "-X snitch/cmd.Date=${self.lastModifiedDate or "unknown"}"
             ];
             meta = with pkgs.lib; {
               description = "a friendlier ss/netstat for humans";
