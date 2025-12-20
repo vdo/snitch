@@ -1,7 +1,9 @@
 package tui
 
 import (
+	"fmt"
 	"snitch/internal/collector"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -10,6 +12,11 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// search mode captures all input
 	if m.searchActive {
 		return m.handleSearchKey(msg)
+	}
+
+	// kill confirmation dialog
+	if m.showKillConfirm {
+		return m.handleKillConfirmKey(msg)
 	}
 
 	// detail view only allows closing
@@ -58,6 +65,25 @@ func (m model) handleHelpKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc", "enter", "q", "?":
 		m.showHelp = false
+	}
+	return m, nil
+}
+
+func (m model) handleKillConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "y", "Y":
+		if m.killTarget != nil && m.killTarget.PID > 0 {
+			pid := m.killTarget.PID
+			process := m.killTarget.Process
+			m.showKillConfirm = false
+			m.killTarget = nil
+			return m, killProcess(pid, process)
+		}
+		m.showKillConfirm = false
+		m.killTarget = nil
+	case "n", "N", "esc", "q":
+		m.showKillConfirm = false
+		m.killTarget = nil
 	}
 	return m, nil
 }
@@ -135,6 +161,55 @@ func (m model) handleNormalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.fetchData()
 	case "?":
 		m.showHelp = true
+
+	// watch/monitor process
+	case "w":
+		visible := m.visibleConnections()
+		if m.cursor < len(visible) {
+			conn := visible[m.cursor]
+			if conn.PID > 0 {
+				wasWatched := m.isWatched(conn.PID)
+				m.toggleWatch(conn.PID)
+
+				// count connections for this pid
+				connCount := 0
+				for _, c := range m.connections {
+					if c.PID == conn.PID {
+						connCount++
+					}
+				}
+
+				if wasWatched {
+					m.statusMessage = fmt.Sprintf("unwatched %s (pid %d)", conn.Process, conn.PID)
+				} else if connCount > 1 {
+					m.statusMessage = fmt.Sprintf("watching %s (pid %d) - %d connections", conn.Process, conn.PID, connCount)
+				} else {
+					m.statusMessage = fmt.Sprintf("watching %s (pid %d)", conn.Process, conn.PID)
+				}
+				m.statusExpiry = time.Now().Add(2 * time.Second)
+				return m, clearStatusAfter(2 * time.Second)
+			}
+		}
+	case "W":
+		// clear all watched
+		count := len(m.watchedPIDs)
+		m.watchedPIDs = make(map[int]bool)
+		if count > 0 {
+			m.statusMessage = fmt.Sprintf("cleared %d watched processes", count)
+			m.statusExpiry = time.Now().Add(2 * time.Second)
+			return m, clearStatusAfter(2 * time.Second)
+		}
+
+	// kill process
+	case "K":
+		visible := m.visibleConnections()
+		if m.cursor < len(visible) {
+			conn := visible[m.cursor]
+			if conn.PID > 0 {
+				m.killTarget = &conn
+				m.showKillConfirm = true
+			}
+		}
 	}
 
 	return m, nil

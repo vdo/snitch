@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"snitch/internal/collector"
 	"snitch/internal/theme"
 	"time"
@@ -35,6 +36,17 @@ type model struct {
 	interval    time.Duration
 	lastRefresh time.Time
 	err         error
+
+	// watched processes
+	watchedPIDs map[int]bool
+
+	// kill confirmation
+	showKillConfirm bool
+	killTarget      *collector.Connection
+
+	// status message (temporary feedback)
+	statusMessage string
+	statusExpiry  time.Time
 }
 
 type Options struct {
@@ -93,6 +105,7 @@ func New(opts Options) model {
 		theme:           theme.GetTheme(opts.Theme),
 		interval:        interval,
 		lastRefresh:     time.Now(),
+		watchedPIDs:     make(map[int]bool),
 	}
 }
 
@@ -127,6 +140,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case errMsg:
 		m.err = msg.err
 		return m, nil
+
+	case killResultMsg:
+		if msg.success {
+			m.statusMessage = fmt.Sprintf("killed %s (pid %d)", msg.process, msg.pid)
+		} else {
+			m.statusMessage = fmt.Sprintf("failed to kill pid %d: %v", msg.pid, msg.err)
+		}
+		m.statusExpiry = time.Now().Add(3 * time.Second)
+		return m, tea.Batch(m.fetchData(), clearStatusAfter(3*time.Second))
+
+	case clearStatusMsg:
+		if time.Now().After(m.statusExpiry) {
+			m.statusMessage = ""
+		}
+		return m, nil
 	}
 
 	return m, nil
@@ -142,7 +170,15 @@ func (m model) View() string {
 	if m.showDetail && m.selected != nil {
 		return m.renderDetail()
 	}
-	return m.renderMain()
+
+	main := m.renderMain()
+
+	// overlay kill confirmation modal on top of main view
+	if m.showKillConfirm && m.killTarget != nil {
+		return m.overlayModal(main, m.renderKillModal())
+	}
+
+	return main
 }
 
 func (m *model) applySorting() {
@@ -167,7 +203,8 @@ func (m *model) clampCursor() {
 }
 
 func (m model) visibleConnections() []collector.Connection {
-	var result []collector.Connection
+	var watched []collector.Connection
+	var unwatched []collector.Connection
 
 	for _, c := range m.connections {
 		if !m.matchesFilters(c) {
@@ -176,10 +213,15 @@ func (m model) visibleConnections() []collector.Connection {
 		if m.searchQuery != "" && !m.matchesSearch(c) {
 			continue
 		}
-		result = append(result, c)
+		if m.isWatched(c.PID) {
+			watched = append(watched, c)
+		} else {
+			unwatched = append(unwatched, c)
+		}
 	}
 
-	return result
+	// watched connections appear first
+	return append(watched, unwatched...)
 }
 
 func (m model) matchesFilters(c collector.Connection) bool {
@@ -217,4 +259,26 @@ func (m model) matchesSearch(c collector.Connection) bool {
 		containsIgnoreCase(c.User, m.searchQuery) ||
 		containsIgnoreCase(c.Proto, m.searchQuery) ||
 		containsIgnoreCase(c.State, m.searchQuery)
+}
+
+func (m model) isWatched(pid int) bool {
+	if pid <= 0 {
+		return false
+	}
+	return m.watchedPIDs[pid]
+}
+
+func (m *model) toggleWatch(pid int) {
+	if pid <= 0 {
+		return
+	}
+	if m.watchedPIDs[pid] {
+		delete(m.watchedPIDs, pid)
+	} else {
+		m.watchedPIDs[pid] = true
+	}
+}
+
+func (m model) watchedCount() int {
+	return len(m.watchedPIDs)
 }

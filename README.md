@@ -73,6 +73,9 @@ g/G           top/bottom
 t/u           toggle tcp/udp
 l/e/o         toggle listen/established/other
 s/S           cycle sort / reverse
+w             watch/monitor process (highlight)
+W             clear all watched
+K             kill process (with confirmation)
 /             search
 enter         connection details
 ?             help

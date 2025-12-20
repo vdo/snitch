@@ -158,6 +158,8 @@ func (m model) renderRow(c collector.Connection, selected bool) string {
 	indicator := "  "
 	if selected {
 		indicator = m.theme.Styles.Success.Render("▸ ")
+	} else if m.isWatched(c.PID) {
+		indicator = m.theme.Styles.Watched.Render("★ ")
 	}
 
 	process := truncate(c.Process, cols.process)
@@ -200,7 +202,18 @@ func (m model) renderRow(c collector.Connection, selected bool) string {
 }
 
 func (m model) renderStatusLine() string {
-	left := "  " + m.theme.Styles.Normal.Render("t/u proto  l/e/o state  s sort  / search  ? help  q quit")
+	// show status message if present
+	if m.statusMessage != "" {
+		return "  " + m.theme.Styles.Warning.Render(m.statusMessage)
+	}
+
+	left := "  " + m.theme.Styles.Normal.Render("t/u proto  l/e/o state  w watch  K kill  s sort  / search  ? help  q quit")
+
+	// show watched count if any
+	if m.watchedCount() > 0 {
+		watchedInfo := fmt.Sprintf("  watching: %d", m.watchedCount())
+		left += m.theme.Styles.Watched.Render(watchedInfo)
+	}
 
 	return left
 }
@@ -232,6 +245,12 @@ func (m model) renderHelp() string {
   ───────
   s            cycle sort field
   S            reverse sort order
+
+  process management
+  ──────────────────
+  w            watch/unwatch process (highlight & track)
+  W            clear all watched processes
+  K            kill process (with confirmation)
 
   other
   ─────
@@ -284,6 +303,183 @@ func (m model) renderDetail() string {
 	b.WriteString("  " + m.theme.Styles.Normal.Render("press esc to close") + "\n")
 
 	return b.String()
+}
+
+func (m model) renderKillModal() string {
+	if m.killTarget == nil {
+		return ""
+	}
+
+	c := m.killTarget
+	processName := c.Process
+	if processName == "" {
+		processName = "(unknown)"
+	}
+
+	// count how many connections this process has
+	connCount := 0
+	for _, conn := range m.connections {
+		if conn.PID == c.PID {
+			connCount++
+		}
+	}
+
+	// build modal content
+	var lines []string
+	lines = append(lines, "")
+	lines = append(lines, m.theme.Styles.Error.Render("  !!  KILL PROCESS?  "))
+	lines = append(lines, "")
+	lines = append(lines, fmt.Sprintf("  process:  %s", m.theme.Styles.Header.Render(processName)))
+	lines = append(lines, fmt.Sprintf("  pid:      %s", m.theme.Styles.Header.Render(fmt.Sprintf("%d", c.PID))))
+	lines = append(lines, fmt.Sprintf("  user:     %s", c.User))
+	lines = append(lines, fmt.Sprintf("  conns:    %d", connCount))
+	lines = append(lines, "")
+	lines = append(lines, m.theme.Styles.Warning.Render("  sends SIGTERM to process"))
+	if connCount > 1 {
+		lines = append(lines, m.theme.Styles.Warning.Render(fmt.Sprintf("  will close all %d connections", connCount)))
+	}
+	lines = append(lines, "")
+	lines = append(lines, fmt.Sprintf("  %s confirm   %s cancel",
+		m.theme.Styles.Success.Render("[y]"),
+		m.theme.Styles.Error.Render("[n]")))
+	lines = append(lines, "")
+
+	return strings.Join(lines, "\n")
+}
+
+func (m model) overlayModal(background, modal string) string {
+	bgLines := strings.Split(background, "\n")
+	modalLines := strings.Split(modal, "\n")
+
+	// find max modal line width using runewidth for proper unicode handling
+	modalWidth := 0
+	for _, line := range modalLines {
+		w := runeWidth(stripAnsi(line))
+		if w > modalWidth {
+			modalWidth = w
+		}
+	}
+	modalWidth += 4 // padding for box
+
+	modalHeight := len(modalLines)
+	boxWidth := modalWidth + 2 // include border chars │ │
+
+	// calculate modal position (centered)
+	startRow := (m.height - modalHeight) / 2
+	if startRow < 2 {
+		startRow = 2
+	}
+	startCol := (m.width - boxWidth) / 2
+	if startCol < 0 {
+		startCol = 0
+	}
+
+	// build result
+	result := make([]string, len(bgLines))
+	copy(result, bgLines)
+
+	// ensure we have enough lines
+	for len(result) < startRow+modalHeight+2 {
+		result = append(result, strings.Repeat(" ", m.width))
+	}
+
+	// helper to build a line with modal overlay
+	buildLine := func(bgLine, modalContent string) string {
+		modalVisibleWidth := runeWidth(stripAnsi(modalContent))
+		endCol := startCol + modalVisibleWidth
+
+		leftBg := visibleSubstring(bgLine, 0, startCol)
+		rightBg := visibleSubstring(bgLine, endCol, m.width)
+
+		// pad left side if needed
+		leftLen := runeWidth(stripAnsi(leftBg))
+		if leftLen < startCol {
+			leftBg = leftBg + strings.Repeat(" ", startCol-leftLen)
+		}
+
+		return leftBg + modalContent + rightBg
+	}
+
+	// draw top border
+	borderRow := startRow - 1
+	if borderRow >= 0 && borderRow < len(result) {
+		border := m.theme.Styles.Border.Render("╭" + strings.Repeat("─", modalWidth) + "╮")
+		result[borderRow] = buildLine(result[borderRow], border)
+	}
+
+	// draw modal content with side borders
+	for i, line := range modalLines {
+		row := startRow + i
+		if row >= 0 && row < len(result) {
+			content := line
+			padding := modalWidth - runeWidth(stripAnsi(line))
+			if padding > 0 {
+				content = line + strings.Repeat(" ", padding)
+			}
+			boxedLine := m.theme.Styles.Border.Render("│") + content + m.theme.Styles.Border.Render("│")
+			result[row] = buildLine(result[row], boxedLine)
+		}
+	}
+
+	// draw bottom border
+	bottomRow := startRow + modalHeight
+	if bottomRow >= 0 && bottomRow < len(result) {
+		border := m.theme.Styles.Border.Render("╰" + strings.Repeat("─", modalWidth) + "╯")
+		result[bottomRow] = buildLine(result[bottomRow], border)
+	}
+
+	return strings.Join(result, "\n")
+}
+
+// runeWidth returns the display width of a string (assumes standard terminal chars)
+func runeWidth(s string) int {
+	return len([]rune(s))
+}
+
+// visibleSubstring extracts a substring by visible column positions, preserving ANSI codes
+func visibleSubstring(s string, start, end int) string {
+	if start >= end {
+		return ""
+	}
+
+	var result strings.Builder
+	visiblePos := 0
+	inEscape := false
+	runes := []rune(s)
+
+	for i := 0; i < len(runes); i++ {
+		r := runes[i]
+
+		// detect start of ANSI escape sequence
+		if r == '\x1b' && i+1 < len(runes) && runes[i+1] == '[' {
+			inEscape = true
+			// always include ANSI codes so colors carry over
+			result.WriteRune(r)
+			continue
+		}
+
+		if inEscape {
+			// include escape sequence characters
+			result.WriteRune(r)
+			// check for end of escape sequence (letter)
+			if (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') {
+				inEscape = false
+			}
+			continue
+		}
+
+		// regular visible character
+		if visiblePos >= start && visiblePos < end {
+			result.WriteRune(r)
+		}
+		visiblePos++
+
+		if visiblePos >= end {
+			break
+		}
+	}
+
+	return result.String()
 }
 
 func (m model) scrollOffset(pageSize, total int) int {
