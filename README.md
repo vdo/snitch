@@ -32,13 +32,18 @@ nix profile install github:karol-broda/snitch
 
 download from [releases](https://github.com/karol-broda/snitch/releases):
 
-```bash
-# amd64
-curl -L https://github.com/karol-broda/snitch/releases/latest/download/snitch_linux_amd64.tar.gz | tar xz
-sudo mv snitch /usr/local/bin/
+- **linux:** `snitch_<version>_linux_<arch>.tar.gz` or `.deb`/`.rpm`/`.apk`
+- **macos:** `snitch_<version>_darwin_<arch>.tar.gz`
 
-# or install .deb/.rpm/.apk from releases
+```bash
+tar xzf snitch_*.tar.gz
+sudo mv snitch /usr/local/bin/
 ```
+
+> **macos:** if blocked with "cannot be opened because the developer cannot be verified", run:
+> ```bash
+> xattr -d com.apple.quarantine /usr/local/bin/snitch
+> ```
 
 ## quick start
 
@@ -174,5 +179,6 @@ theme = "auto"
 
 ## requirements
 
-- linux (reads from `/proc/net/*`)
-- root or `CAP_NET_ADMIN` for full process info
+- linux or macos
+- linux: reads from `/proc/net/*`, root or `CAP_NET_ADMIN` for full process info
+- macos: uses system APIs, may require sudo for full process info
