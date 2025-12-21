@@ -15,4 +15,5 @@ var jsonCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(jsonCmd)
+	addFilterFlags(jsonCmd)
 }
