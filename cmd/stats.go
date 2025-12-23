@@ -8,7 +8,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"snitch/internal/collector"
+	"github.com/karol-broda/snitch/internal/collector"
 	"sort"
 	"strconv"
 	"strings"

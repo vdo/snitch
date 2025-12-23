@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"snitch/internal/config"
+	"github.com/karol-broda/snitch/internal/config"
 
 	"github.com/spf13/cobra"
 )

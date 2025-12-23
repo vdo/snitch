@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"log"
-	"snitch/internal/config"
-	"snitch/internal/tui"
+	"github.com/karol-broda/snitch/internal/config"
+	"github.com/karol-broda/snitch/internal/tui"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"

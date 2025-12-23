@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"snitch/internal/testutil"
+	"github.com/karol-broda/snitch/internal/testutil"
 )
 
 // TestCLIContract tests the CLI interface contracts as specified in the README

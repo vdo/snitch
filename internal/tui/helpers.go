@@ -3,7 +3,7 @@ package tui
 import (
 	"fmt"
 	"regexp"
-	"snitch/internal/collector"
+	"github.com/karol-broda/snitch/internal/collector"
 	"strings"
 )
 

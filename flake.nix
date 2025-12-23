@@ -50,13 +50,15 @@
           version = "nix-${rev}";
           go = mkGo125 pkgs;
           buildGoModule = pkgs.buildGoModule.override { inherit go; };
+          isDarwin = pkgs.stdenv.isDarwin;
         in
         buildGoModule {
           pname = "snitch";
           inherit version;
           src = self;
           vendorHash = "sha256-fX3wOqeOgjH7AuWGxPQxJ+wbhp240CW8tiF4rVUUDzk=";
-          env.CGO_ENABLED = "0";
+          # darwin requires cgo for libproc, linux uses pure go with /proc
+          env.CGO_ENABLED = if isDarwin then "1" else "0";
           env.GOTOOLCHAIN = "local";
           ldflags = [
             "-s"
@@ -69,7 +71,7 @@
             description = "a friendlier ss/netstat for humans";
             homepage = "https://github.com/karol-broda/snitch";
             license = pkgs.lib.licenses.mit;
-            platforms = pkgs.lib.platforms.linux;
+            platforms = pkgs.lib.platforms.linux ++ pkgs.lib.platforms.darwin;
             mainProgram = "snitch";
           };
         };

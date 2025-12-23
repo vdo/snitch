@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"snitch/internal/collector"
+	"github.com/karol-broda/snitch/internal/collector"
 )
 
 // TestCollector wraps MockCollector for use in tests
