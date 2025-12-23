@@ -2,10 +2,10 @@ package tui
 
 import (
 	"fmt"
-	"github.com/karol-broda/snitch/internal/collector"
 	"strings"
 	"time"
 
+	"github.com/karol-broda/snitch/internal/collector"
 	"github.com/mattn/go-runewidth"
 )
 
@@ -85,13 +85,15 @@ func (m model) renderFilters() string {
 func (m model) renderTableHeader() string {
 	cols := m.columnWidths()
 
-	header := fmt.Sprintf("  %-*s  %-*s  %-*s  %-*s  %-*s  %s",
+	header := fmt.Sprintf("  %-*s  %-*s  %-*s  %-*s  %-*s  %-*s  %-*s  %s",
 		cols.process, "PROCESS",
 		cols.port, "PORT",
 		cols.proto, "PROTO",
 		cols.state, "STATE",
 		cols.local, "LOCAL",
-		"REMOTE")
+		cols.remote, "REMOTE",
+		cols.country, "CTRY",
+		"ORG")
 
 	return m.theme.Styles.Header.Render(header) + "\n"
 }
@@ -175,18 +177,27 @@ func (m model) renderRow(c collector.Connection, selected bool) string {
 
 	remote := formatRemote(c.Raddr, c.Rport)
 
+	// Get flag and org for non-local IP
+	flag := getConnectionFlag(c)
+	org := getConnectionOrg(c)
+	if org == "" {
+		org = SymbolDash
+	}
+
 	// apply styling
 	protoStyled := m.theme.Styles.GetProtoStyle(proto).Render(fmt.Sprintf("%-*s", cols.proto, proto))
 	stateStyled := m.theme.Styles.GetStateStyle(state).Render(fmt.Sprintf("%-*s", cols.state, truncate(state, cols.state)))
 
-	row := fmt.Sprintf("%s%-*s  %-*s  %s  %s  %-*s  %s",
+	row := fmt.Sprintf("%s%-*s  %-*s  %s  %s  %-*s  %-*s  %-*s  %s",
 		indicator,
 		cols.process, process,
 		cols.port, port,
 		protoStyled,
 		stateStyled,
 		cols.local, truncate(local, cols.local),
-		truncate(remote, cols.remote))
+		cols.remote, truncate(remote, cols.remote),
+		cols.country, flag,
+		truncate(org, cols.org))
 
 	if selected {
 		return m.theme.Styles.Selected.Render(row) + "\n"
@@ -495,6 +506,8 @@ type columns struct {
 	state   int
 	local   int
 	remote  int
+	country int
+	org     int
 }
 
 func (m model) columnWidths() columns {
@@ -507,14 +520,17 @@ func (m model) columnWidths() columns {
 		state:   11,
 		local:   15,
 		remote:  20,
+		country: 4,
+		org:     20,
 	}
 
-	used := c.process + c.port + c.proto + c.state + c.local + c.remote
+	used := c.process + c.port + c.proto + c.state + c.local + c.remote + c.country + c.org
 	extra := available - used
 
 	if extra > 0 {
-		c.process += extra / 3
-		c.remote += extra - extra/3
+		c.process += extra / 4
+		c.remote += extra / 4
+		c.org += extra - extra/4 - extra/4
 	}
 
 	return c

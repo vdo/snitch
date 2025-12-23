@@ -3,8 +3,10 @@ package tui
 import (
 	"fmt"
 	"regexp"
-	"github.com/karol-broda/snitch/internal/collector"
 	"strings"
+
+	"github.com/karol-broda/snitch/internal/collector"
+	"github.com/karol-broda/snitch/internal/geoip"
 )
 
 func truncate(s string, max int) string {
@@ -49,5 +51,39 @@ func formatRemote(addr string, port int) string {
 		return "-"
 	}
 	return fmt.Sprintf("%s:%d", addr, port)
+}
+
+// getConnectionGeoIP returns the IP to use for geolocation lookup
+// Prefers remote address, falls back to local if remote is local/private
+func getConnectionGeoIP(c collector.Connection) string {
+	// First try remote address
+	if c.Raddr != "" && c.Raddr != "*" && !geoip.IsLocalOrPrivate(c.Raddr) {
+		return c.Raddr
+	}
+
+	// Fall back to local address if remote is local/private
+	if c.Laddr != "" && c.Laddr != "*" && !geoip.IsLocalOrPrivate(c.Laddr) {
+		return c.Laddr
+	}
+
+	return ""
+}
+
+// getConnectionFlag returns the country flag emoji for a connection
+func getConnectionFlag(c collector.Connection) string {
+	ip := getConnectionGeoIP(c)
+	if ip == "" {
+		return "  "
+	}
+	return geoip.GetFlag(ip)
+}
+
+// getConnectionOrg returns the organization for a connection
+func getConnectionOrg(c collector.Connection) string {
+	ip := getConnectionGeoIP(c)
+	if ip == "" {
+		return ""
+	}
+	return geoip.GetOrg(ip)
 }
 

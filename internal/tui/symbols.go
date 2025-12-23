@@ -34,5 +34,6 @@ const (
 
 	// misc
 	SymbolDash = string('\u2013') // en dash
+	SymbolFlag = "🌐"             // globe for flag column header
 )
 
