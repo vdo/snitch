@@ -2,7 +2,7 @@ package tui
 
 import (
 	"fmt"
-	"snitch/internal/collector"
+	"github.com/karol-broda/snitch/internal/collector"
 	"strings"
 	"time"
 

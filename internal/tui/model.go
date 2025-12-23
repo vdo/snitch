@@ -2,8 +2,8 @@ package tui
 
 import (
 	"fmt"
-	"snitch/internal/collector"
-	"snitch/internal/theme"
+	"github.com/karol-broda/snitch/internal/collector"
+	"github.com/karol-broda/snitch/internal/theme"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"

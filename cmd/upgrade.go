@@ -18,7 +18,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
-	"snitch/internal/tui"
+	"github.com/karol-broda/snitch/internal/tui"
 )
 
 const (

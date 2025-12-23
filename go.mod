@@ -1,4 +1,4 @@
-module snitch
+module github.com/karol-broda/snitch
 
 go 1.24.0
 

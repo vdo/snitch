@@ -1,7 +1,7 @@
 package tui
 
 import (
-	"snitch/internal/collector"
+	"github.com/karol-broda/snitch/internal/collector"
 	"testing"
 	"time"
 

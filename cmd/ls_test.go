@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"snitch/internal/collector"
-	"snitch/internal/testutil"
+	"github.com/karol-broda/snitch/internal/collector"
+	"github.com/karol-broda/snitch/internal/testutil"
 )
 
 func TestLsCommand_EmptyResults(t *testing.T) {

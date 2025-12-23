@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"snitch/internal/collector"
-	"snitch/internal/testutil"
+	"github.com/karol-broda/snitch/internal/collector"
+	"github.com/karol-broda/snitch/internal/testutil"
 )
 
 var updateGolden = flag.Bool("update-golden", false, "Update golden files")

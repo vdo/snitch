@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"snitch/internal/collector"
-	"snitch/internal/color"
+	"github.com/karol-broda/snitch/internal/collector"
+	"github.com/karol-broda/snitch/internal/color"
 	"strconv"
 	"strings"
 
