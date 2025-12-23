@@ -62,10 +62,7 @@
           env.GOTOOLCHAIN = "local";
           # go 1.25 crypto/x509 uses SecTrustCopyCertificateChain (macOS 12+)
           env.MACOSX_DEPLOYMENT_TARGET = pkgs.lib.optionalString isDarwin "12.0";
-          buildInputs = pkgs.lib.optionals isDarwin [
-            pkgs.darwin.apple_sdk.frameworks.Security
-            pkgs.darwin.apple_sdk.frameworks.CoreFoundation
-          ];
+          # nixpkgs 25.05+ uses system SDK directly, no explicit framework buildInputs needed
           ldflags = [
             "-s"
             "-w"
